@@ -10,15 +10,22 @@ import {
 } from "@mui/material";
 import Layout from "../components/Layout";
 import TestCard from "../components/TestCard";
+import Link from "next/link";
 
 export default function TestConnection() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const screenRef = useRef<HTMLVideoElement>(null);
+
+  // Estados para indicar se cada teste foi concluído
+  const [cameraTested, setCameraTested] = useState<boolean>(false);
+  const [micTested, setMicTested] = useState<boolean>(false);
+  const [screenTested, setScreenTested] = useState<boolean>(false);
+
   const [micTestMessage, setMicTestMessage] = useState<string>("");
   const [recording, setRecording] = useState<boolean>(false);
   const [micLevel, setMicLevel] = useState<number>(0);
 
-  // Função para iniciar o medidor de áudio usando a API Web Audio
+  // Função para iniciar o medidor de áudio via Web Audio API
   const startMicLevelMeter = (stream: MediaStream) => {
     const audioContext = new AudioContext();
     const analyser = audioContext.createAnalyser();
@@ -29,7 +36,6 @@ export default function TestConnection() {
 
     const updateMicLevel = () => {
       analyser.getByteFrequencyData(dataArray);
-      // Calcula o valor médio do volume
       let sum = 0;
       for (let i = 0; i < dataArray.length; i++) {
         sum += dataArray[i];
@@ -42,20 +48,21 @@ export default function TestConnection() {
     updateMicLevel();
   };
 
-  // Função para testar a câmera
+  // Teste da Câmera
   const handleTestCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
+        setCameraTested(true); // Marcar o teste da câmera como concluído
       }
     } catch (err) {
       console.error("Camera error:", err);
     }
   };
 
-  // Função para testar o compartilhamento de tela (o usuário deve escolher a aba da nossa aplicação)
+  // Teste do Compartilhamento de Tela (o usuário deve selecionar a aba da nossa aplicação)
   const handleTestScreen = async () => {
     try {
       alert(
@@ -67,17 +74,17 @@ export default function TestConnection() {
       if (screenRef.current) {
         screenRef.current.srcObject = stream;
         screenRef.current.play();
+        setScreenTested(true); // Marcar o teste da tela como concluído
       }
     } catch (err) {
       console.error("Screen sharing error:", err);
     }
   };
 
-  // Função para testar o microfone: grava 3 segundos, reproduz o áudio e ativa o medidor
+  // Teste do Microfone: grava 3 segundos, reproduz o áudio, inicia o medidor e marca o teste como concluído
   const handleTestMic = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Inicia o medidor de áudio
       startMicLevelMeter(stream);
 
       const mediaRecorder = new MediaRecorder(stream);
@@ -93,6 +100,7 @@ export default function TestConnection() {
         const audio = new Audio(audioURL);
         audio.play();
         setMicTestMessage("Microphone test completed: playback started.");
+        setMicTested(true); // Marcar o teste do microfone como concluído
       };
 
       setRecording(true);
@@ -108,6 +116,9 @@ export default function TestConnection() {
       setMicTestMessage("Error testing microphone.");
     }
   };
+
+  // Verifica se todos os testes foram concluídos
+  const allTestsPassed = cameraTested && micTested && screenTested;
 
   return (
     <Layout>
@@ -126,65 +137,88 @@ export default function TestConnection() {
           alignItems="stretch"
         >
           {/* Teste da Câmera */}
-          <TestCard
-            title="Test Camera"
-            buttonLabel="Start Camera"
-            onTest={handleTestCamera}
-          >
-            <Box sx={{ mt: 2 }}>
-              <video
-                ref={videoRef}
-                width="100%"
-                autoPlay
-                muted
-                style={{ borderRadius: 4, transform: "scaleX(-1)" }} // Corrige a inversão
-              />
-            </Box>
-          </TestCard>
+          <Box sx={{ minHeight: 300, flex: 1 }}>
+            <TestCard
+              title="Test Camera"
+              buttonLabel="Start Camera"
+              onTest={handleTestCamera}
+              tested={cameraTested}
+            >
+              <Box sx={{ mt: 2 }}>
+                <video
+                  ref={videoRef}
+                  width="100%"
+                  autoPlay
+                  muted
+                  style={{ borderRadius: 4, transform: "scaleX(-1)" }}
+                />
+              </Box>
+            </TestCard>
+          </Box>
 
           {/* Teste do Microfone */}
-          <TestCard
-            title="Test Microphone"
-            buttonLabel={recording ? "Recording..." : "Start Mic Test"}
-            onTest={handleTestMic}
-          >
-            {micTestMessage && (
-              <Typography variant="body2" sx={{ mt: 2 }}>
-                {micTestMessage}
-              </Typography>
-            )}
-            {/* Medidor de áudio */}
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body2">Mic Level:</Typography>
-              <LinearProgress
-                variant="determinate"
-                value={(micLevel / 255) * 100}
-              />
-            </Box>
-          </TestCard>
+          <Box sx={{ minHeight: 300, flex: 1 }}>
+            <TestCard
+              title="Test Microphone"
+              buttonLabel={recording ? "Recording..." : "Start Mic Test"}
+              onTest={handleTestMic}
+              tested={micTested}
+            >
+              {micTestMessage && (
+                <Typography variant="body2" sx={{ mt: 2 }}>
+                  {micTestMessage}
+                </Typography>
+              )}
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2">Mic Level:</Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={(micLevel / 255) * 100}
+                />
+              </Box>
+            </TestCard>
+          </Box>
 
           {/* Teste do Compartilhamento de Tela */}
-          <TestCard
-            title="Test Screen Sharing"
-            buttonLabel="Start Screen Share"
-            onTest={handleTestScreen}
-          >
-            <Box sx={{ mt: 2 }}>
-              <video
-                ref={screenRef}
-                width="100%"
-                autoPlay
-                muted
-                style={{ borderRadius: 4 }}
-              />
-            </Box>
-          </TestCard>
+          <Box sx={{ minHeight: 300, flex: 1 }}>
+            <TestCard
+              title="Test Screen Sharing"
+              buttonLabel="Start Screen Share"
+              onTest={handleTestScreen}
+              tested={screenTested}
+            >
+              <Box sx={{ mt: 2 }}>
+                <video
+                  ref={screenRef}
+                  width="100%"
+                  autoPlay
+                  muted
+                  style={{ borderRadius: 4 }}
+                />
+              </Box>
+            </TestCard>
+          </Box>
         </Stack>
 
         <Box sx={{ mt: 4, textAlign: "center" }}>
-          <Button variant="contained" color="primary" size="large">
-            Proceed to Interview
-          </Button>
+          {/* Botão habilitado somente se todos os testes foram concluídos */}
+          <Link href="/interview" passHref>
+            <Button
+              variant="contained"
+              size="large"
+              disabled={!allTestsPassed}
+              sx={{
+                backgroundColor: allTestsPassed ? "#4CAF50" : undefined,
+                "&:hover": {
+                  backgroundColor: allTestsPassed ? "#43A047" : undefined,
+                },
+              }}
+            >
+              {allTestsPassed
+                ? "Proceed to Interview"
+                : "Complete all tests to proceed"}
+            </Button>
+          </Link>
         </Box>
       </Container>
     </Layout>

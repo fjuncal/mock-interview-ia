@@ -1,12 +1,14 @@
 // components/TestCard.tsx
 import React, { ReactNode } from "react";
 import { Card, CardContent, Typography, Button, Box } from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 interface TestCardProps {
   title: string;
   buttonLabel: string;
   onTest: () => void;
   children?: ReactNode;
+  tested?: boolean;
 }
 
 const TestCard: React.FC<TestCardProps> = ({
@@ -14,6 +16,7 @@ const TestCard: React.FC<TestCardProps> = ({
   buttonLabel,
   onTest,
   children,
+  tested,
 }) => {
   return (
     <Card
@@ -33,7 +36,7 @@ const TestCard: React.FC<TestCardProps> = ({
           onClick={onTest}
           sx={{
             mt: 1,
-            backgroundColor: "#3813c0", // Cor personalizada para o botão
+            backgroundColor: "#3813c0",
             color: "#fff",
             "&:hover": {
               backgroundColor: "#512dd3",
@@ -42,6 +45,11 @@ const TestCard: React.FC<TestCardProps> = ({
         >
           {buttonLabel}
         </Button>
+        {tested && (
+          <Box sx={{ mt: 1 }}>
+            <CheckCircleIcon sx={{ color: "success.main", fontSize: 32 }} />
+          </Box>
+        )}
         {children && <Box sx={{ mt: 2 }}>{children}</Box>}
       </CardContent>
     </Card>
