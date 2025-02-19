@@ -1,5 +1,6 @@
 import Layout from "@/components/Layout";
 import { Typography, Button, Box, Paper } from "@mui/material";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -31,9 +32,11 @@ export default function Home() {
             validate your environment.
           </Typography>
           <Box sx={{ mt: 3 }}>
-            <Button variant="contained" color="primary" size="large">
-              Start Interview
-            </Button>
+            <Link href="/test-connection" passHref>
+              <Button variant="contained" color="primary" size="large">
+                Start Interview
+              </Button>
+            </Link>
           </Box>
         </Paper>
       </Layout>
