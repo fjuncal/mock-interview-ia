@@ -5,7 +5,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#181C28",
+      main: "#3813c0", // Cor principal para botões e componentes que usam a cor primária
     },
     secondary: {
       main: "#2F394A",
@@ -17,6 +17,19 @@ const theme = createTheme({
     text: {
       primary: "#F5F5F5",
       secondary: "#B0B0B0",
+    },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#3813c0",
+          color: "#fff",
+          "&:hover": {
+            backgroundColor: "#512dd3",
+          },
+        },
+      },
     },
   },
   typography: {

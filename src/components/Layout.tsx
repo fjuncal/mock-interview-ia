@@ -1,13 +1,20 @@
+// components/Layout.tsx
+import React, { ReactNode } from "react";
 import { AppBar, Toolbar, Typography, Container, Box } from "@mui/material";
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
-      <AppBar position="static" elevation={4}>
+      {/* Sobrescrevendo o AppBar para não usar a cor primária do tema */}
+      <AppBar
+        position="static"
+        elevation={4}
+        sx={{ backgroundColor: "#2F394A" }}
+      >
         <Toolbar>
           <Typography variant="h6" component="div">
             Interview with AI
