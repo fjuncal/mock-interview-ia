@@ -1,37 +1,6 @@
 // pages/interview.tsx
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Container,
-  Typography,
-  Box,
-  Paper,
-  Stack,
-  Avatar,
-} from "@mui/material";
-import Layout from "../components/Layout";
-import Image from "next/image";
 
-interface SpeechRecognitionEvent extends Event {
-  readonly resultIndex: number;
-  readonly results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  readonly error: string;
-  readonly message: string;
-}
-
-// Definição dos tipos para SpeechRecognition
-interface CustomSpeechRecognition extends EventTarget {
-  lang: string;
-  interimResults: boolean;
-  maxAlternatives: number;
-  start(): void;
-  stop(): void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-}
-
+// Declarações globais para SpeechRecognition
 declare global {
   interface Window {
     SpeechRecognition: {
@@ -43,57 +12,78 @@ declare global {
   }
 }
 
+// Tipos para SpeechRecognition e seus eventos
+interface SpeechRecognitionEvent extends Event {
+  readonly resultIndex: number;
+  readonly results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+  readonly message: string;
+}
+
+interface CustomSpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+}
+
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Container,
+  Typography,
+  Box,
+  Paper,
+  Stack,
+  List,
+  ListItem,
+  ListItemAvatar,
+  Avatar,
+  ListItemText,
+} from "@mui/material";
+import Layout from "../components/Layout";
+import Image from "next/image";
+
 interface Message {
   sender: "ai" | "user";
   text: string;
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default function Interview() {
-  // Dados do usuário (salvos na tela de teste/modal)
+  // Estados dos dados do usuário
   const [userName, setUserName] = useState<string>("Guest");
   const [userEmail, setUserEmail] = useState<string>("no-email@domain.com");
   const [interviewTopic, setInterviewTopic] = useState<string>("General");
 
-  // Histórico da conversa
-  const [messages, setMessages] = useState<Message[]>([]);
-  // Array de perguntas simuladas (substitua por consulta real se desejar)
+  // Estados para perguntas e histórico do chat
   const [questions, setQuestions] = useState<string[]>([]);
-  // Índice da pergunta atual
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  // Flag para indicar se estamos ouvindo o usuário
+  const [messages, setMessages] = useState<Message[]>([]);
   const [recognizing, setRecognizing] = useState<boolean>(false);
 
-  // Referências
+  // Referência para a câmera do usuário
   const userVideoRef = useRef<HTMLVideoElement>(null);
-  const recognitionRef = useRef<CustomSpeechRecognition | null>(null);
 
   useEffect(() => {
     // Recupera dados do localStorage
-    const storedName = localStorage.getItem("userName");
-    const storedEmail = localStorage.getItem("userEmail");
-    const storedTopic = localStorage.getItem("interviewTopic");
-    if (storedName) setUserName(storedName);
-    if (storedEmail) setUserEmail(storedEmail);
-    if (storedTopic) setInterviewTopic(storedTopic);
+    const storedName = localStorage.getItem("userName") || "Guest";
+    const storedEmail =
+      localStorage.getItem("userEmail") || "no-email@domain.com";
+    const storedTopic = localStorage.getItem("interviewTopic") || "General";
+    setUserName(storedName);
+    setUserEmail(storedEmail);
+    setInterviewTopic(storedTopic);
 
-    // Configura a câmera do usuário
-    async function setupCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-        if (userVideoRef.current) {
-          userVideoRef.current.srcObject = stream;
-          userVideoRef.current.play();
-        }
-      } catch (error) {
-        console.error("Error accessing camera/mic:", error);
-      }
-    }
     setupCamera();
 
-    // Simula consulta para obter 10 perguntas sobre o tema
+    // Define perguntas simuladas – você pode substituir por um conjunto estático específico para cada tema
     const simulatedQuestions = [
       "Can you tell me about yourself?",
       "Why are you interested in this position?",
@@ -108,83 +98,118 @@ export default function Interview() {
     ];
     setQuestions(simulatedQuestions);
 
-    // Inicia a entrevista com a primeira pergunta
-    if (simulatedQuestions.length > 0) {
-      askQuestion(simulatedQuestions[0]);
-    }
+    // Inicia o fluxo de entrevista
+    runInterview(simulatedQuestions);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Configura a câmera do usuário */
+  async function setupCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      if (userVideoRef.current) {
+        userVideoRef.current.srcObject = stream;
+        userVideoRef.current.play();
+      }
+    } catch (error) {
+      console.error("Error accessing camera/mic:", error);
+    }
+  }
+
   /** Faz a IA falar via TTS */
-  const speakAiText = (text: string) => {
+  function speakAiText(text: string) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
     speechSynthesis.speak(utterance);
-  };
+  }
 
-  /** Exibe a pergunta atual no chat, fala e inicia a captura da resposta */
-  const askQuestion = (question: string) => {
-    const aiMessage: Message = { sender: "ai", text: question };
-    setMessages((prev) => [...prev, aiMessage]);
-    speakAiText(question);
-    // Inicia o reconhecimento para captar a resposta do usuário
-    startRecognition();
-  };
+  /**
+   * Inicia o reconhecimento de voz e retorna uma Promise que resolve com o transcript final.
+   */
+  function startRecognitionAsync(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      if (
+        !("SpeechRecognition" in window) &&
+        !("webkitSpeechRecognition" in window)
+      ) {
+        reject("Speech recognition not supported.");
+        return;
+      }
+      const SpeechRecognitionConstructor =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition: CustomSpeechRecognition =
+        new SpeechRecognitionConstructor();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      setRecognizing(true);
 
-  /** Inicializa a captura de voz do usuário usando a API Web Speech */
-  const startRecognition = () => {
-    if (
-      !("SpeechRecognition" in window) &&
-      !("webkitSpeechRecognition" in window)
-    ) {
-      alert("Your browser does not support speech recognition.");
-      return;
-    }
-    const SpeechRecognitionConstructor =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognitionConstructor();
-    recognition.lang = "en-US";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognitionRef.current = recognition;
-    setRecognizing(true);
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript;
-      const userMessage: Message = { sender: "user", text: transcript };
-      setMessages((prev) => [...prev, userMessage]);
-      setRecognizing(false);
-      // Avança para a próxima pergunta após um pequeno delay
-      setTimeout(() => {
-        proceedToNextQuestion();
-      }, 1500);
-    };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error("Speech recognition error:", event.error);
-      setRecognizing(false);
-    };
-
-    recognition.start();
-  };
-
-  /** Avança para a próxima pergunta, se houver */
-  const proceedToNextQuestion = () => {
-    if (currentQuestionIndex + 1 < questions.length) {
-      const nextIndex = currentQuestionIndex + 1;
-      setCurrentQuestionIndex(nextIndex);
-      askQuestion(questions[nextIndex]);
-    } else {
-      // Fim da entrevista
-      const endMessage: Message = {
-        sender: "ai",
-        text: "Thank you for your responses. The interview is now complete.",
+      let finalTranscript = "";
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        finalTranscript = event.results[0][0].transcript;
+        console.log("onresult:", finalTranscript);
       };
-      setMessages((prev) => [...prev, endMessage]);
-      speakAiText(endMessage.text);
-      // Aqui você pode chamar uma função para enviar a transcrição por e-mail e limpar o localStorage
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error("Speech recognition error:", event.error);
+        setRecognizing(false);
+        reject(event.error);
+      };
+
+      recognition.onend = () => {
+        setRecognizing(false);
+        console.log("onend, transcript:", finalTranscript);
+        resolve(finalTranscript);
+      };
+
+      recognition.start();
+    });
+  }
+
+  /**
+   * Processa uma única pergunta:
+   * - Insere a pergunta no chat e a fala
+   * - Aguarda o transcript do usuário
+   * - Insere a resposta do usuário e aguarda um delay para avançar
+   */
+  async function askQuestionAsync(question: string): Promise<void> {
+    setMessages((prev) => [...prev, { sender: "ai", text: question }]);
+    speakAiText(question);
+    try {
+      const transcript = await startRecognitionAsync();
+      if (transcript.trim() === "") {
+        setMessages((prev) => [
+          ...prev,
+          { sender: "user", text: "(No response)" },
+        ]);
+      } else {
+        setMessages((prev) => [...prev, { sender: "user", text: transcript }]);
+      }
+    } catch (error) {
+      console.error("Recognition error:", error);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "user", text: "(Recognition error)" },
+      ]);
     }
-  };
+    await delay(1500);
+  }
+
+  /** Itera sobre as perguntas de forma sequencial */
+  async function runInterview(questionsList: string[]) {
+    for (let i = 0; i < questionsList.length; i++) {
+      await askQuestionAsync(questionsList[i]);
+    }
+    const endMsg: Message = {
+      sender: "ai",
+      text: "Thank you for your responses. The interview is now complete.",
+    };
+    setMessages((prev) => [...prev, endMsg]);
+    speakAiText(endMsg.text);
+  }
 
   return (
     <Layout>
@@ -195,119 +220,149 @@ export default function Interview() {
         <Typography variant="body1" gutterBottom>
           Name: {userName} | Email: {userEmail} | Topic: {interviewTopic}
         </Typography>
-
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          sx={{ mt: 2 }}
-        >
-          {/* Coluna 1: Câmera do Usuário */}
-          <Paper
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+          {/* Área das Câmeras */}
+          <Box
             sx={{
-              p: 2,
               flex: 1,
-              textAlign: "center",
-              backgroundColor: "#2F394A",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
             }}
           >
-            <Typography variant="subtitle1" gutterBottom>
-              {userName} Camera
-            </Typography>
-            <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
-              <video
-                ref={userVideoRef}
-                width="100%"
-                autoPlay
-                muted
-                style={{ borderRadius: 8, maxWidth: 400 }}
-              />
-            </Box>
-          </Paper>
-
-          {/* Coluna 2: Avatar da IA */}
-          <Paper
-            sx={{
-              p: 2,
-              flex: 1,
-              textAlign: "center",
-              backgroundColor: "#2F394A",
-            }}
-          >
-            <Typography variant="subtitle1" gutterBottom>
-              Talently AI
-            </Typography>
-            <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
-              <Image
-                src="/images/ai-avatar.png"
-                alt="AI Avatar"
-                width={200}
-                height={200}
-                style={{ borderRadius: "50%" }}
-              />
-            </Box>
-          </Paper>
-
-          {/* Coluna 3: Chat/Transcripts */}
-          <Paper
-            sx={{
-              p: 2,
-              flex: 1.2,
-              backgroundColor: "#1F1F1F",
-              color: "#FFFFFF",
-            }}
-          >
-            <Typography variant="subtitle1" gutterBottom>
-              Conversation
-            </Typography>
-            {/* Usando List para simular um chat estilo WhatsApp */}
-            <Box
-              sx={{
-                flexGrow: 1,
-                overflowY: "auto",
-                p: 1,
-                borderRadius: 1,
-                minHeight: 300,
-              }}
-            >
-              {messages.map((msg, idx) => (
+            <Box sx={{ display: "flex", gap: 4 }}>
+              {/* Câmera do Usuário */}
+              <Paper
+                sx={{
+                  width: 520,
+                  height: 400,
+                  backgroundColor: "#2F394A",
+                  p: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Typography
+                  variant="h5"
+                  sx={{ color: "#fff", mb: 1, textAlign: "center" }}
+                >
+                  {userName}
+                </Typography>
                 <Box
-                  key={idx}
                   sx={{
-                    mb: 1,
+                    flex: 1,
                     display: "flex",
-                    justifyContent:
-                      msg.sender === "ai" ? "flex-start" : "flex-end",
+                    justifyContent: "center",
+                    alignItems: "center",
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <video
+                    ref={userVideoRef}
+                    width="100%"
+                    autoPlay
+                    muted
+                    style={{ borderRadius: 8, maxHeight: 350 }}
+                  />
+                </Box>
+              </Paper>
+              {/* Avatar da IA */}
+              <Paper
+                sx={{
+                  width: 520,
+                  height: 400,
+                  backgroundColor: "#2F394A",
+                  p: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Typography
+                  variant="h5"
+                  sx={{ color: "#fff", mb: 1, textAlign: "center" }}
+                >
+                  Talently AI
+                </Typography>
+                <Box sx={{ mt: 1 }}>
+                  <Image
+                    src="/images/ai-avatar.png"
+                    alt="AI Avatar"
+                    width={150}
+                    height={150}
+                    style={{ borderRadius: "50%" }}
+                  />
+                </Box>
+              </Paper>
+            </Box>
+          </Box>
+
+          {/* Painel de Chat/Transcripts */}
+          <Box
+            sx={{
+              width: 360,
+              backgroundColor: "#2F394A",
+              p: 2,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <Typography variant="h6" sx={{ color: "#fff", mb: 1 }}>
+              Conversation
+            </Typography>
+            <Paper
+              sx={{
+                flex: 1,
+                backgroundColor: "#1F1F1F",
+                color: "#fff",
+                p: 2,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+              }}
+            >
+              <List sx={{ p: 0 }}>
+                {messages.map((msg, idx) => (
+                  <ListItem
+                    key={idx}
+                    sx={{
+                      p: 0.5,
+                      display: "flex",
+                      justifyContent:
+                        msg.sender === "ai" ? "flex-start" : "flex-end",
+                    }}
+                  >
                     {msg.sender === "ai" ? (
-                      <Avatar src="/images/ai-avatar.png" sx={{ mr: 1 }} />
-                    ) : (
-                      <Avatar sx={{ mr: 1 }}>{userName.charAt(0)}</Avatar>
-                    )}
-                    <Box
+                      <ListItemAvatar sx={{ minWidth: 40 }}>
+                        <Avatar
+                          src="/images/ai-avatar.png"
+                          sx={{ width: 40, height: 40 }}
+                        />
+                      </ListItemAvatar>
+                    ) : null}
+                    <Paper
                       sx={{
                         p: 1,
-                        borderRadius: "20px",
+                        borderRadius: 2,
                         backgroundColor:
                           msg.sender === "ai" ? "#333" : "#4CAF50",
                         color: "#fff",
-                        maxWidth: "80%",
+                        maxWidth: "70%",
                       }}
                     >
-                      <Typography variant="body2">{msg.text}</Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              ))}
-              {recognizing && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Listening...
-                </Typography>
-              )}
-            </Box>
-            {/* Você pode adicionar botões extras aqui para enviar o transcript por e-mail, etc. */}
-          </Paper>
+                      <ListItemText
+                        primary={msg.text}
+                        primaryTypographyProps={{ fontSize: "0.9rem" }}
+                      />
+                    </Paper>
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Box>
         </Stack>
       </Container>
     </Layout>
