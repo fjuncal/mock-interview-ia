@@ -1,16 +1,10 @@
 // pages/test-connection.tsx
 import React, { useState, useRef } from "react";
-import {
-  Box,
-  Button,
-  Typography,
-  Container,
-  Stack,
-  LinearProgress,
-} from "@mui/material";
+import { Box, Button, Typography, Stack, LinearProgress } from "@mui/material";
 import Layout from "../components/Layout";
 import TestCard from "../components/TestCard";
-import Link from "next/link";
+import { useRouter } from "next/router";
+import ConfirmationModal from "@/components/ConfirmationModal";
 
 export default function TestConnection() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -24,6 +18,30 @@ export default function TestConnection() {
   const [micTestMessage, setMicTestMessage] = useState<string>("");
   const [recording, setRecording] = useState<boolean>(false);
   const [micLevel, setMicLevel] = useState<number>(0);
+
+  const router = useRouter();
+  const [openModal, setOpenModal] = useState(false);
+
+  // Exemplo simples de finalização do teste
+  const handleCompleteTests = () => {
+    // Aqui você pode garantir que câmera, mic e tela foram testados
+    setOpenModal(true);
+  };
+
+  const handleModalClose = () => {
+    setOpenModal(false);
+  };
+
+  // Quando o usuário confirma nome/e-mail no modal
+  const handleConfirm = (name: string, email: string, topic: string) => {
+    // Salva no localStorage
+    localStorage.setItem("userName", name);
+    localStorage.setItem("userEmail", email);
+    localStorage.setItem("interviewTopic", topic);
+    setOpenModal(false);
+    // Redireciona para a página de entrevista
+    router.push("/interview");
+  };
 
   // Função para iniciar o medidor de áudio via Web Audio API
   const startMicLevelMeter = (stream: MediaStream) => {
@@ -118,17 +136,17 @@ export default function TestConnection() {
   };
 
   // Verifica se todos os testes foram concluídos
-  const allTestsPassed = cameraTested && micTested && screenTested;
+  //const allTestsPassed = cameraTested && micTested && screenTested;
 
   return (
     <Layout>
-      <Container>
+      <Box sx={{ textAlign: "center" }}>
         <Typography variant="h4" gutterBottom>
-          Connection Test
+          Test Your Devices
         </Typography>
         <Typography variant="body1" gutterBottom>
-          Please test your camera, microphone, and screen sharing before
-          starting the interview.
+          Please ensure your camera, microphone, and screen sharing are working
+          properly.
         </Typography>
 
         <Stack
@@ -200,27 +218,20 @@ export default function TestConnection() {
           </Box>
         </Stack>
 
-        <Box sx={{ mt: 4, textAlign: "center" }}>
-          {/* Botão habilitado somente se todos os testes foram concluídos */}
-          <Link href="/interview" passHref>
-            <Button
-              variant="contained"
-              size="large"
-              disabled={!allTestsPassed}
-              sx={{
-                backgroundColor: allTestsPassed ? "#4CAF50" : undefined,
-                "&:hover": {
-                  backgroundColor: allTestsPassed ? "#43A047" : undefined,
-                },
-              }}
-            >
-              {allTestsPassed
-                ? "Proceed to Interview"
-                : "Complete all tests to proceed"}
-            </Button>
-          </Link>
-        </Box>
-      </Container>
+        <Button
+          variant="contained"
+          sx={{ mt: 3 }}
+          onClick={handleCompleteTests}
+        >
+          Proceed to Interview
+        </Button>
+      </Box>
+
+      <ConfirmationModal
+        open={openModal}
+        onClose={handleModalClose}
+        onConfirm={handleConfirm}
+      />
     </Layout>
   );
 }
