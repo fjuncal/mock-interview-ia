@@ -311,6 +311,17 @@ export default function Interview() {
         <Typography variant="body1" gutterBottom>
           Hello, {userName}! Lets begin your interview.
         </Typography>
+        {/* Label indicando o tipo de entrevista */}
+        <Typography variant="body2" gutterBottom color="text.secondary">
+          Interview Type:{" "}
+          {interviewTopic === "initialScreening"
+            ? "Initial Screening"
+            : interviewTopic === "java"
+            ? "Java"
+            : interviewTopic === "springboot"
+            ? "Spring Boot"
+            : interviewTopic}
+        </Typography>
         <Stack direction="column" spacing={2}>
           {/* Área das Câmeras */}
           <Stack direction="row" spacing={4} sx={{ mb: 2 }}>
