@@ -46,15 +46,25 @@ import MicIcon from "@mui/icons-material/Mic";
 import StopIcon from "@mui/icons-material/Stop";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
+// Importa os arquivos JSON
+import initialScreening from "../data/initialScreening.json";
+import javaQuestions from "../data/java.json";
+import springbootQuestions from "../data/springboot.json";
+
 interface Message {
   sender: "ai" | "user";
   text: string;
 }
 
+function pickRandomQuestions(all: string[], num: number = 10): string[] {
+  const shuffled = [...all].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, num);
+}
+
 export default function Interview() {
-  // --------------------------------------------------
+  // -------------------------------
   // ESTADOS DO USUÁRIO E ENTREVISTA
-  // --------------------------------------------------
+  // -------------------------------
   const [userName, setUserName] = useState<string>("Guest");
   const [userEmail, setUserEmail] = useState<string>("no-email@domain.com");
   const [interviewTopic, setInterviewTopic] = useState<string>("General");
@@ -63,33 +73,36 @@ export default function Interview() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
 
-  // --------------------------------------------------
+  // -------------------------------
   // ESTADOS DE GRAVAÇÃO E RECONHECIMENTO
-  // --------------------------------------------------
-  const [recording, setRecording] = useState<boolean>(false); // se o toggle está ligado
-  const [recognizing, setRecognizing] = useState<boolean>(false); // se a API está em processo
+  // -------------------------------
+  const [recording, setRecording] = useState<boolean>(false);
+  const [recognizing, setRecognizing] = useState<boolean>(false);
   const [lastTranscript, setLastTranscript] = useState<string>("");
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
 
-  // Se quisermos um label textual acima do botão:
+  // Labels para os botões
   const [recordLabel, setRecordLabel] = useState<string>("Start Recording");
-  const [nextLabel, setNextLabel] = useState<string>("Next Question");
+  const [nextLabel] = useState<string>("Next Question");
 
-  // --------------------------------------------------
+  // -------------------------------
   // REFERÊNCIAS
-  // --------------------------------------------------
+  // -------------------------------
   const userVideoRef = useRef<HTMLVideoElement>(null);
   const recognitionRef = useRef<CustomSpeechRecognition | null>(null);
+  // Ref para garantir que a primeira pergunta seja setada apenas uma vez
+  const initialQuestionSet = useRef<boolean>(false);
 
-  // --------------------------------------------------
+  // -------------------------------
   // EFEITO INICIAL
-  // --------------------------------------------------
+  // -------------------------------
   useEffect(() => {
-    // Carrega dados do localStorage
+    // Recupera dados do localStorage (definidos pelo modal na página de teste)
     const storedName = localStorage.getItem("userName") || "Guest";
     const storedEmail =
       localStorage.getItem("userEmail") || "no-email@domain.com";
-    const storedTopic = localStorage.getItem("interviewTopic") || "General";
+    const storedTopic =
+      localStorage.getItem("interviewTopic") || "initialScreening";
 
     setUserName(storedName);
     setUserEmail(storedEmail);
@@ -97,31 +110,32 @@ export default function Interview() {
 
     setupCamera();
 
-    const simulatedQuestions = [
-      `Hi ${storedName}, can you tell me about yourself?`,
-      "Why are you interested in this position?",
-      "What are your strengths?",
-      "What are your weaknesses?",
-      "Describe a challenging project you've worked on.",
-      "How do you handle tight deadlines?",
-      "Where do you see yourself in five years?",
-      "How do you work in a team?",
-      "What motivates you?",
-      "Why should we hire you?",
-    ];
-    setQuestions(simulatedQuestions);
+    // Seleciona as perguntas com base no tópico escolhido
+    let selectedQuestions: string[] = [];
+    switch (storedTopic) {
+      case "initialScreening":
+        selectedQuestions = pickRandomQuestions(initialScreening, 10);
+        break;
+      case "java":
+        selectedQuestions = pickRandomQuestions(javaQuestions, 10);
+        break;
+      case "springboot":
+        selectedQuestions = pickRandomQuestions(springbootQuestions, 10);
+        break;
+      default:
+        selectedQuestions = pickRandomQuestions(initialScreening, 10);
+    }
+    setQuestions(selectedQuestions);
 
-    // Exibe a primeira pergunta apenas uma vez
-    if (simulatedQuestions.length > 0) {
+    // Exibe a primeira pergunta apenas se ainda não foi setada
+    if (selectedQuestions.length > 0 && !initialQuestionSet.current) {
       setCurrentQuestionIndex(0);
-      addAiMessage(simulatedQuestions[0]);
+      addAiMessage(selectedQuestions[0]);
+      initialQuestionSet.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --------------------------------------------------
-  // FUNÇÃO PARA CONFIGURAR A CÂMERA
-  // --------------------------------------------------
   async function setupCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -137,9 +151,6 @@ export default function Interview() {
     }
   }
 
-  // --------------------------------------------------
-  // FUNÇÕES DE MENSAGENS E SÍNTESE
-  // --------------------------------------------------
   function speakAiText(text: string) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
@@ -155,9 +166,6 @@ export default function Interview() {
     speakAiText(text);
   }
 
-  // --------------------------------------------------
-  // FUNÇÃO PARA INICIAR RECONHECIMENTO
-  // --------------------------------------------------
   function startRecognitionAsync(): Promise<string> {
     return new Promise((resolve, reject) => {
       if (
@@ -217,9 +225,6 @@ export default function Interview() {
     });
   }
 
-  // --------------------------------------------------
-  // INICIAR GRAVAÇÃO
-  // --------------------------------------------------
   async function startRecordingHandler() {
     setRecordLabel("Pause Recording");
     setRecording(true);
@@ -233,12 +238,8 @@ export default function Interview() {
     }
   }
 
-  // --------------------------------------------------
-  // PARAR GRAVAÇÃO
-  // --------------------------------------------------
   function stopRecordingHandler() {
     const elapsed = Date.now() - recordingStartTime;
-    // Exige, por exemplo, pelo menos 1 segundo de gravação
     if (elapsed < 1000) {
       addMessage(
         "ai",
@@ -264,9 +265,6 @@ export default function Interview() {
     setLastTranscript("");
   }
 
-  // --------------------------------------------------
-  // TOGGLE DE GRAVAÇÃO
-  // --------------------------------------------------
   async function toggleRecording() {
     if (!recording) {
       await startRecordingHandler();
@@ -275,9 +273,6 @@ export default function Interview() {
     }
   }
 
-  // --------------------------------------------------
-  // AVANÇAR PERGUNTA
-  // --------------------------------------------------
   function nextQuestionHandler() {
     if (currentQuestionIndex + 1 < questions.length) {
       const nextIndex = currentQuestionIndex + 1;
@@ -288,26 +283,23 @@ export default function Interview() {
       addAiMessage(
         "Thank you for your responses. The interview is now complete."
       );
+      // Limpa os dados do localStorage após a entrevista
+      setTimeout(() => {
+        localStorage.removeItem("userName");
+        localStorage.removeItem("userEmail");
+        localStorage.removeItem("interviewTopic");
+      }, 3000);
     }
   }
 
-  // --------------------------------------------------
-  // RENDER
-  // --------------------------------------------------
   return (
     <Layout>
-      {/*
-          A ideia é ter um Container com:
-          - "pb: '120px'" para evitar sobreposição no footer
-          - "minHeight: 'calc(100vh - 80px)'" ou algo parecido
-            para garantir espaço total na tela
-        */}
       <Container
         sx={{
           mt: 4,
           mb: 4,
-          pb: "120px", // aumenta padding-bottom para não sobrepor o footer
-          minHeight: "calc(100vh - 160px)", // ajusta conforme seu footer
+          pb: "150px", // aumenta padding-bottom para evitar sobreposição do footer
+          minHeight: "calc(100vh - 160px)",
         }}
       >
         <Typography variant="h4" gutterBottom>
@@ -316,11 +308,9 @@ export default function Interview() {
         <Typography variant="body1" gutterBottom>
           Hello, {userName}! Lets begin your interview.
         </Typography>
-
         <Stack direction="column" spacing={2}>
           {/* Área das Câmeras */}
           <Stack direction="row" spacing={4} sx={{ mb: 2 }}>
-            {/* Câmera do Usuário */}
             <Paper
               sx={{
                 width: 520,
@@ -356,8 +346,6 @@ export default function Interview() {
                 />
               </Box>
             </Paper>
-
-            {/* Avatar da IA */}
             <Paper
               sx={{
                 width: 520,
@@ -388,7 +376,7 @@ export default function Interview() {
             </Paper>
           </Stack>
 
-          {/* Área de Controle: labels e botões em colunas */}
+          {/* Área de Controle: labels e botões alinhados */}
           <Stack direction="row" spacing={4} alignItems="center">
             <Stack direction="column" spacing={1} alignItems="center">
               <Typography variant="body2" sx={{ fontWeight: "bold" }}>
@@ -460,7 +448,6 @@ export default function Interview() {
                 </ListItem>
               ))}
             </List>
-            {/* Se quiser mostrar "Listening..." quando a API estiver processando */}
             {recognizing && (
               <Typography variant="body2" sx={{ color: "red" }}>
                 Listening...

@@ -7,6 +7,10 @@ import {
   DialogActions,
   TextField,
   Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 
 interface ConfirmationModalProps {
@@ -26,11 +30,11 @@ export default function ConfirmationModal({
 
   const handleConfirm = () => {
     if (!userName.trim() || !userEmail.trim() || !interviewTopic.trim()) {
-      alert("Please enter your name, email, and interview topic.");
+      alert("Please enter your name, email, and select an interview topic.");
       return;
     }
     onConfirm(userName, userEmail, interviewTopic);
-    // Opcional: reseta os campos se necessário
+    // Opcional: reseta os campos
     setUserName("");
     setUserEmail("");
     setInterviewTopic("");
@@ -54,13 +58,19 @@ export default function ConfirmationModal({
           value={userEmail}
           onChange={(e) => setUserEmail(e.target.value)}
         />
-        <TextField
-          label="Interview Topic"
-          fullWidth
-          sx={{ mt: 2 }}
-          value={interviewTopic}
-          onChange={(e) => setInterviewTopic(e.target.value)}
-        />
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel id="topic-select-label">Interview Topic</InputLabel>
+          <Select
+            labelId="topic-select-label"
+            value={interviewTopic}
+            label="Interview Topic"
+            onChange={(e) => setInterviewTopic(e.target.value as string)}
+          >
+            <MenuItem value={"initialScreening"}>Initial Screening</MenuItem>
+            <MenuItem value={"java"}>Java</MenuItem>
+            <MenuItem value={"springboot"}>Spring Boot</MenuItem>
+          </Select>
+        </FormControl>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
