@@ -11,6 +11,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  FormHelperText,
 } from "@mui/material";
 
 interface ConfirmationModalProps {
@@ -28,16 +29,31 @@ export default function ConfirmationModal({
   const [userEmail, setUserEmail] = useState("");
   const [interviewTopic, setInterviewTopic] = useState("");
 
+  const [errors, setErrors] = useState({
+    userName: false,
+    userEmail: false,
+    interviewTopic: false,
+  });
+
   const handleConfirm = () => {
-    if (!userName.trim() || !userEmail.trim() || !interviewTopic.trim()) {
-      alert("Please enter your name, email, and select an interview topic.");
-      return;
+    const newErrors = {
+      userName: userName.trim() === "",
+      userEmail: userEmail.trim() === "",
+      interviewTopic: interviewTopic.trim() === "",
+    };
+
+    setErrors(newErrors);
+
+    if (newErrors.userName || newErrors.userEmail || newErrors.interviewTopic) {
+      return; // Não confirma se houver erro
     }
+
     onConfirm(userName, userEmail, interviewTopic);
     // Opcional: reseta os campos
     setUserName("");
     setUserEmail("");
     setInterviewTopic("");
+    setErrors({ userName: false, userEmail: false, interviewTopic: false });
   };
 
   return (
@@ -50,6 +66,8 @@ export default function ConfirmationModal({
           sx={{ mt: 2 }}
           value={userName}
           onChange={(e) => setUserName(e.target.value)}
+          error={errors.userName}
+          helperText={errors.userName ? "Name is required" : ""}
         />
         <TextField
           label="Your Email"
@@ -57,8 +75,10 @@ export default function ConfirmationModal({
           sx={{ mt: 2 }}
           value={userEmail}
           onChange={(e) => setUserEmail(e.target.value)}
+          error={errors.userEmail}
+          helperText={errors.userEmail ? "Email is required" : ""}
         />
-        <FormControl fullWidth sx={{ mt: 2 }}>
+        <FormControl fullWidth sx={{ mt: 2 }} error={errors.interviewTopic}>
           <InputLabel id="topic-select-label">Interview Topic</InputLabel>
           <Select
             labelId="topic-select-label"
@@ -70,6 +90,9 @@ export default function ConfirmationModal({
             <MenuItem value={"java"}>Java</MenuItem>
             <MenuItem value={"springboot"}>Spring Boot</MenuItem>
           </Select>
+          {errors.interviewTopic && (
+            <FormHelperText>Interview Topic is required</FormHelperText>
+          )}
         </FormControl>
       </DialogContent>
       <DialogActions>
