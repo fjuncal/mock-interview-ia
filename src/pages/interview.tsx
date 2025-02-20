@@ -365,14 +365,14 @@ export default function Interview() {
                 variant="h5"
                 sx={{ color: "#fff", mb: 1, textAlign: "center" }}
               >
-                Talently AI
+                Interviewer IA
               </Typography>
               <Box sx={{ mt: 1 }}>
                 <Image
-                  src="/images/ai-avatar.png"
+                  src={`https://aiavatar.com/globalImages/landingPage/variants/gaming.webp`}
                   alt="AI Avatar"
-                  width={150}
-                  height={150}
+                  width={250}
+                  height={250}
                   style={{ borderRadius: "50%" }}
                 />
               </Box>
@@ -429,8 +429,8 @@ export default function Interview() {
                   {msg.sender === "ai" && (
                     <ListItemAvatar sx={{ minWidth: 40 }}>
                       <Avatar
-                        src="/images/ai-avatar.png"
-                        sx={{ width: 40, height: 40 }}
+                        src="https://aiavatar.com/globalImages/landingPage/variants/gaming.webp"
+                        sx={{ width: 60, height: 60 }}
                       />
                     </ListItemAvatar>
                   )}
