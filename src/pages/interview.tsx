@@ -76,6 +76,8 @@ export default function Interview() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
 
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
   // -------------------------------
   // ESTADOS DE GRAVAÇÃO E RECONHECIMENTO
   // -------------------------------
@@ -157,6 +159,12 @@ export default function Interview() {
   function speakAiText(text: string) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
+    const voices = speechSynthesis.getVoices();
+    // Tenta selecionar uma voz que seja exatamente en-US
+    const englishVoice = voices.find((voice) => voice.lang === "en-US");
+    if (englishVoice) {
+      utterance.voice = englishVoice;
+    }
     speechSynthesis.speak(utterance);
   }
 
@@ -360,7 +368,7 @@ export default function Interview() {
                   style={{
                     borderRadius: 8,
                     maxHeight: 350,
-                    transform: "scaleX(-1)",
+                    transform: isMobile ? undefined : "scaleX(-1)",
                   }}
                 />
               </Box>
