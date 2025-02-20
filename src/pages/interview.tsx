@@ -315,12 +315,13 @@ export default function Interview() {
         <Typography variant="body2" gutterBottom color="text.secondary">
           Interview Type:{" "}
           {interviewTopic === "initialScreening"
-            ? "Initial Screening"
-            : interviewTopic === "java"
+            ? "Initial Screening "
+            : interviewTopic === "java "
             ? "Java"
-            : interviewTopic === "springboot"
+            : interviewTopic === "springboot "
             ? "Spring Boot"
             : interviewTopic}
+          | Email: {userEmail}
         </Typography>
         <Stack direction="column" spacing={2}>
           {/* Área das Câmeras */}
