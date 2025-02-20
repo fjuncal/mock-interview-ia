@@ -414,7 +414,11 @@ export default function Interview() {
               <Typography variant="body2" sx={{ fontWeight: "bold" }}>
                 {nextLabel}
               </Typography>
-              <Button variant="contained" onClick={nextQuestionHandler}>
+              <Button
+                variant="contained"
+                onClick={nextQuestionHandler}
+                disabled={currentQuestionIndex + 1 >= questions.length}
+              >
                 <ArrowForwardIcon />
               </Button>
             </Stack>
