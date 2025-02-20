@@ -356,7 +356,11 @@ export default function Interview() {
                   width="100%"
                   autoPlay
                   muted
-                  style={{ borderRadius: 8, maxHeight: 350 }}
+                  style={{
+                    borderRadius: 8,
+                    maxHeight: 350,
+                    transform: "scaleX(-1)",
+                  }}
                 />
               </Box>
             </Paper>
