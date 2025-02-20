@@ -2,12 +2,8 @@
 
 declare global {
   interface Window {
-    SpeechRecognition: {
-      new (): CustomSpeechRecognition;
-    };
-    webkitSpeechRecognition: {
-      new (): CustomSpeechRecognition;
-    };
+    SpeechRecognition: { new (): CustomSpeechRecognition };
+    webkitSpeechRecognition: { new (): CustomSpeechRecognition };
   }
 }
 
@@ -37,6 +33,7 @@ import {
   Box,
   Paper,
   Stack,
+  Button,
   List,
   ListItem,
   ListItemAvatar,
@@ -45,31 +42,61 @@ import {
 } from "@mui/material";
 import Layout from "../components/Layout";
 import Image from "next/image";
+import MicIcon from "@mui/icons-material/Mic";
+import StopIcon from "@mui/icons-material/Stop";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 interface Message {
   sender: "ai" | "user";
   text: string;
 }
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export default function Interview() {
-  const [userName, setUserName] = useState("Guest");
+  // --------------------------------------------------
+  // ESTADOS DO USUÁRIO E ENTREVISTA
+  // --------------------------------------------------
+  const [userName, setUserName] = useState<string>("Guest");
+  const [userEmail, setUserEmail] = useState<string>("no-email@domain.com");
+  const [interviewTopic, setInterviewTopic] = useState<string>("General");
+
   const [questions, setQuestions] = useState<string[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [recognizing, setRecognizing] = useState<boolean>(false);
+
+  // --------------------------------------------------
+  // ESTADOS DE GRAVAÇÃO E RECONHECIMENTO
+  // --------------------------------------------------
+  const [recording, setRecording] = useState<boolean>(false); // se o toggle está ligado
+  const [recognizing, setRecognizing] = useState<boolean>(false); // se a API está em processo
+  const [lastTranscript, setLastTranscript] = useState<string>("");
+  const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
+
+  // Se quisermos um label textual acima do botão:
+  const [recordLabel, setRecordLabel] = useState<string>("Start Recording");
+  const [nextLabel, setNextLabel] = useState<string>("Next Question");
+
+  // --------------------------------------------------
+  // REFERÊNCIAS
+  // --------------------------------------------------
   const userVideoRef = useRef<HTMLVideoElement>(null);
+  const recognitionRef = useRef<CustomSpeechRecognition | null>(null);
 
+  // --------------------------------------------------
+  // EFEITO INICIAL
+  // --------------------------------------------------
   useEffect(() => {
-    // Exemplo: recuperando do localStorage
+    // Carrega dados do localStorage
     const storedName = localStorage.getItem("userName") || "Guest";
-    setUserName(storedName);
+    const storedEmail =
+      localStorage.getItem("userEmail") || "no-email@domain.com";
+    const storedTopic = localStorage.getItem("interviewTopic") || "General";
 
-    // Configura a câmera
+    setUserName(storedName);
+    setUserEmail(storedEmail);
+    setInterviewTopic(storedTopic);
+
     setupCamera();
 
-    // Perguntas fixas
     const simulatedQuestions = [
       `Hi ${storedName}, can you tell me about yourself?`,
       "Why are you interested in this position?",
@@ -84,13 +111,17 @@ export default function Interview() {
     ];
     setQuestions(simulatedQuestions);
 
-    // Inicia no index 0
+    // Exibe a primeira pergunta apenas uma vez
     if (simulatedQuestions.length > 0) {
-      runInterview(simulatedQuestions);
+      setCurrentQuestionIndex(0);
+      addAiMessage(simulatedQuestions[0]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // --------------------------------------------------
+  // FUNÇÃO PARA CONFIGURAR A CÂMERA
+  // --------------------------------------------------
   async function setupCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -102,68 +133,38 @@ export default function Interview() {
         userVideoRef.current.play();
       }
     } catch (error) {
-      console.error("Camera error:", error);
+      console.error("Error accessing camera/mic:", error);
     }
   }
 
+  // --------------------------------------------------
+  // FUNÇÕES DE MENSAGENS E SÍNTESE
+  // --------------------------------------------------
   function speakAiText(text: string) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
     speechSynthesis.speak(utterance);
   }
 
-  // Inicia o fluxo de perguntas
-  async function runInterview(questionsList: string[]) {
-    for (let i = 0; i < questionsList.length; i++) {
-      await processQuestion(questionsList[i]);
-    }
-    // Final
-    addMessage(
-      "ai",
-      "Thank you for your responses. The interview is now complete."
-    );
-    speakAiText("Thank you for your responses. The interview is now complete.");
+  function addMessage(sender: "ai" | "user", text: string) {
+    setMessages((prev) => [...prev, { sender, text }]);
   }
 
-  // Faz a IA perguntar, espera 1.5s, inicia recognition com time limit 8s
-  async function processQuestion(question: string) {
-    addMessage("ai", question);
-    speakAiText(question);
-
-    // Espera 1.5s antes de iniciar recognition, para evitar ruídos imediatos
-    await delay(1500);
-
-    const transcript = await startRecognitionWithTimeout(8000); // 8s
-    if (transcript.trim().length < 3) {
-      // Se fala for muito curta ou vazia, repetimos a pergunta
-      addMessage("ai", "I didn't catch that. Let me ask again...");
-      speakAiText("I didn't catch that. Let me ask again...");
-      // Repete a mesma pergunta
-      await processQuestion(question);
-      return;
-    } else {
-      // Se fala for ok
-      addMessage("user", transcript);
-      addMessage("ai", `Oh, awesome, ${userName}!`);
-      speakAiText(`Oh, awesome, ${userName}!`);
-      // Espera 1.5s antes de avançar
-      await delay(1500);
-    }
+  function addAiMessage(text: string) {
+    addMessage("ai", text);
+    speakAiText(text);
   }
 
-  // Reconhecimento com time limit
-  async function startRecognitionWithTimeout(
-    timeLimitMs: number
-  ): Promise<string> {
-    return new Promise((resolve) => {
-      let finalTranscript = "";
-      let ended = false;
-
+  // --------------------------------------------------
+  // FUNÇÃO PARA INICIAR RECONHECIMENTO
+  // --------------------------------------------------
+  function startRecognitionAsync(): Promise<string> {
+    return new Promise((resolve, reject) => {
       if (
         !("SpeechRecognition" in window) &&
         !("webkitSpeechRecognition" in window)
       ) {
-        resolve("");
+        reject("Speech recognition not supported.");
         return;
       }
       const SpeechRecognitionConstructor =
@@ -176,53 +177,149 @@ export default function Interview() {
       recognition.maxAlternatives = 1;
       setRecognizing(true);
 
+      let finalTranscript = "";
+      let finished = false;
+
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         finalTranscript = event.results[0][0].transcript;
+        console.log("onresult:", finalTranscript);
       };
 
-      recognition.onerror = () => {
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error("Speech recognition error:", event.error);
+        finished = true;
         setRecognizing(false);
+        reject(event.error);
       };
 
       recognition.onend = () => {
-        if (!ended) {
-          ended = true;
+        if (!finished) {
+          finished = true;
           setRecognizing(false);
+          console.log("onend, transcript:", finalTranscript);
           resolve(finalTranscript);
         }
       };
 
-      // Inicia
       recognition.start();
+      recognitionRef.current = recognition;
 
-      // Timer
+      // Força stop após 15s
       setTimeout(() => {
-        if (!ended) {
-          ended = true;
+        if (!finished) {
+          finished = true;
           setRecognizing(false);
           recognition.stop();
+          console.log("Timeout reached, transcript:", finalTranscript);
           resolve(finalTranscript);
         }
-      }, timeLimitMs);
+      }, 15000);
     });
   }
 
-  function addMessage(sender: "ai" | "user", text: string) {
-    setMessages((prev) => [...prev, { sender, text }]);
+  // --------------------------------------------------
+  // INICIAR GRAVAÇÃO
+  // --------------------------------------------------
+  async function startRecordingHandler() {
+    setRecordLabel("Pause Recording");
+    setRecording(true);
+    setRecordingStartTime(Date.now());
+
+    try {
+      const transcript = await startRecognitionAsync();
+      setLastTranscript(transcript);
+    } catch (error) {
+      console.error("Recognition error:", error);
+    }
   }
 
+  // --------------------------------------------------
+  // PARAR GRAVAÇÃO
+  // --------------------------------------------------
+  function stopRecordingHandler() {
+    const elapsed = Date.now() - recordingStartTime;
+    // Exige, por exemplo, pelo menos 1 segundo de gravação
+    if (elapsed < 1000) {
+      addMessage(
+        "ai",
+        "Recording too short. Please record for at least 1 second."
+      );
+      speakAiText("Recording too short. Please record for at least 1 second.");
+      return;
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setRecording(false);
+    setRecordLabel("Start Recording");
+    setRecognizing(false);
+
+    if (lastTranscript.trim().length > 0) {
+      addMessage("user", lastTranscript);
+      addAiMessage(`Oh, awesome, ${userName}!`);
+    } else {
+      addMessage("user", "(No response)");
+    }
+    setLastTranscript("");
+  }
+
+  // --------------------------------------------------
+  // TOGGLE DE GRAVAÇÃO
+  // --------------------------------------------------
+  async function toggleRecording() {
+    if (!recording) {
+      await startRecordingHandler();
+    } else {
+      stopRecordingHandler();
+    }
+  }
+
+  // --------------------------------------------------
+  // AVANÇAR PERGUNTA
+  // --------------------------------------------------
+  function nextQuestionHandler() {
+    if (currentQuestionIndex + 1 < questions.length) {
+      const nextIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(nextIndex);
+      addAiMessage(questions[nextIndex]);
+      setRecordLabel("Start Recording");
+    } else {
+      addAiMessage(
+        "Thank you for your responses. The interview is now complete."
+      );
+    }
+  }
+
+  // --------------------------------------------------
+  // RENDER
+  // --------------------------------------------------
   return (
     <Layout>
-      <Container sx={{ mt: 4, mb: 4 }}>
+      {/*
+          A ideia é ter um Container com:
+          - "pb: '120px'" para evitar sobreposição no footer
+          - "minHeight: 'calc(100vh - 80px)'" ou algo parecido
+            para garantir espaço total na tela
+        */}
+      <Container
+        sx={{
+          mt: 4,
+          mb: 4,
+          pb: "120px", // aumenta padding-bottom para não sobrepor o footer
+          minHeight: "calc(100vh - 160px)", // ajusta conforme seu footer
+        }}
+      >
         <Typography variant="h4" gutterBottom>
-          Automated Interview
+          Interview Session
         </Typography>
         <Typography variant="body1" gutterBottom>
-          Hello, {userName}. We will now begin your interview automatically.
+          Hello, {userName}! Lets begin your interview.
         </Typography>
 
         <Stack direction="column" spacing={2}>
-          <Stack direction="row" spacing={4}>
+          {/* Área das Câmeras */}
+          <Stack direction="row" spacing={4} sx={{ mb: 2 }}>
             {/* Câmera do Usuário */}
             <Paper
               sx={{
@@ -259,6 +356,7 @@ export default function Interview() {
                 />
               </Box>
             </Paper>
+
             {/* Avatar da IA */}
             <Paper
               sx={{
@@ -290,7 +388,32 @@ export default function Interview() {
             </Paper>
           </Stack>
 
-          {/* Chat */}
+          {/* Área de Controle: labels e botões em colunas */}
+          <Stack direction="row" spacing={4} alignItems="center">
+            <Stack direction="column" spacing={1} alignItems="center">
+              <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                {recordLabel}
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={toggleRecording}
+                disabled={recognizing}
+              >
+                {recording ? <StopIcon /> : <MicIcon />}
+              </Button>
+            </Stack>
+
+            <Stack direction="column" spacing={1} alignItems="center">
+              <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                {nextLabel}
+              </Typography>
+              <Button variant="contained" onClick={nextQuestionHandler}>
+                <ArrowForwardIcon />
+              </Button>
+            </Stack>
+          </Stack>
+
+          {/* Área de Chat */}
           <Paper
             sx={{
               backgroundColor: "#1F1F1F",
@@ -337,6 +460,7 @@ export default function Interview() {
                 </ListItem>
               ))}
             </List>
+            {/* Se quiser mostrar "Listening..." quando a API estiver processando */}
             {recognizing && (
               <Typography variant="body2" sx={{ color: "red" }}>
                 Listening...
