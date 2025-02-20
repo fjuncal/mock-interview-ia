@@ -56,6 +56,7 @@ interface Message {
   text: string;
 }
 
+// Função para embaralhar e selecionar 'num' perguntas únicas
 function pickRandomQuestions(all: string[], num: number = 10): string[] {
   const shuffled = [...all].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, num);
