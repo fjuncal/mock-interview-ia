@@ -50,6 +50,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import initialScreening from "../data/initialScreening.json";
 import javaQuestions from "../data/java.json";
 import springbootQuestions from "../data/springboot.json";
+import { useRouter } from "next/router";
 
 interface Message {
   sender: "ai" | "user";
@@ -66,6 +67,7 @@ export default function Interview() {
   // -------------------------------
   // ESTADOS DO USUÁRIO E ENTREVISTA
   // -------------------------------
+  const router = useRouter();
   const [userName, setUserName] = useState<string>("Guest");
   const [userEmail, setUserEmail] = useState<string>("no-email@domain.com");
   const [interviewTopic, setInterviewTopic] = useState<string>("General");
@@ -455,6 +457,15 @@ export default function Interview() {
               </Typography>
             )}
           </Paper>
+          {currentQuestionIndex + 1 >= questions.length && (
+            <Button
+              variant="contained"
+              sx={{ mt: 2 }}
+              onClick={() => router.push("/")}
+            >
+              Go Home
+            </Button>
+          )}
         </Stack>
       </Container>
     </Layout>
