@@ -1,4 +1,4 @@
-// pages/interview.tsx
+import avatarIa from "../assets/avatar-ia.jpg";
 
 declare global {
   interface Window {
@@ -385,7 +385,7 @@ export default function Interview() {
               </Typography>
               <Box sx={{ mt: 1 }}>
                 <Image
-                  src={`https://aiavatar.com/globalImages/landingPage/variants/gaming.webp`}
+                  src={avatarIa}
                   alt="AI Avatar"
                   width={250}
                   height={250}
@@ -449,7 +449,7 @@ export default function Interview() {
                   {msg.sender === "ai" && (
                     <ListItemAvatar sx={{ minWidth: 40 }}>
                       <Avatar
-                        src="https://aiavatar.com/globalImages/landingPage/variants/gaming.webp"
+                        src={avatarIa.src}
                         sx={{ width: 60, height: 60 }}
                       />
                     </ListItemAvatar>
