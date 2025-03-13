@@ -1,0 +1,22 @@
+[
+  "What are goroutines, and how do they differ from traditional threads?",
+  "How does Golang’s garbage collector work?",
+  "What is the difference between var declaration, := short declaration, and const in Go?",
+  "What are pointers in Golang, and how do they work?",
+  "What is a struct in Golang, and how does it differ from a class in other languages?",
+  "What are channels in Golang, and how do they facilitate communication between goroutines?",
+  "What is the difference between buffered and unbuffered channels?",
+  "How does the sync.WaitGroup work, and when should it be used?",
+  "What are mutexes in Golang, and when should they be preferred over channels?",
+  "What is the select statement in Golang, and how does it help with concurrency?",
+  "How does error handling work in Go, and why doesn’t it use exceptions like other languages?",
+  "What is the defer keyword, and how does it work?",
+  "What is panic and recover in Go? When should they be used?",
+  "What are some common ways to improve error handling in Golang applications?",
+  "What are some best practices for structuring a large Go project?",
+  "What are slices in Go, and how do they differ from arrays?",
+  "What is a map in Golang, and how does it handle concurrency?",
+  "How does memory allocation work in Go? What are the heap and stack?",
+  "What are interfaces in Go, and how do they differ from interfaces in other languages?",
+  "How does Golang handle JSON serialization and deserialization?"
+]

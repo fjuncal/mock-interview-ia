@@ -48,6 +48,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 // Importa os arquivos JSON
 import initialScreening from "../data/initialScreening.json";
+import golangQuestions from "../data/golang.json";
 import javaQuestions from "../data/java.json";
 import springbootQuestions from "../data/springboot.json";
 import { useRouter } from "next/router";
@@ -126,6 +127,9 @@ export default function Interview() {
         break;
       case "springboot":
         selectedQuestions = pickRandomQuestions(springbootQuestions, 10);
+        break;
+      case "golang":
+        selectedQuestions = pickRandomQuestions(golangQuestions, 10);
         break;
       default:
         selectedQuestions = pickRandomQuestions(initialScreening, 10);
@@ -328,6 +332,8 @@ export default function Interview() {
             ? "Java"
             : interviewTopic === "springboot "
             ? "Spring Boot"
+            : interviewTopic === "golang"
+            ? "Golang"
             : interviewTopic}
           | Email: {userEmail}
         </Typography>

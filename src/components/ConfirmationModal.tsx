@@ -89,6 +89,7 @@ export default function ConfirmationModal({
             <MenuItem value={"initialScreening"}>Initial Screening</MenuItem>
             <MenuItem value={"java"}>Java</MenuItem>
             <MenuItem value={"springboot"}>Spring Boot</MenuItem>
+            <MenuItem value={"golang"}>Golang</MenuItem>
           </Select>
           {errors.interviewTopic && (
             <FormHelperText>Interview Topic is required</FormHelperText>

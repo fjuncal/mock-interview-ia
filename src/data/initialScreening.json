@@ -37,5 +37,6 @@
   "Can you explain your experience with automated testing and test-driven development (TDD)?",
   "What’s your experience with working on a distributed team?",
   "What kind of work environment do you thrive in?",
-  "Where do you see yourself in five years in your career?"
+  "Where do you see yourself in five years in your career?",
+  "Have you experienced any problems with database slowdowns or queries? How did you solve it? "
 ]
